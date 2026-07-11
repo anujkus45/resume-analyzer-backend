@@ -2,10 +2,7 @@ package com.resumeanalyzer.backend.entity;
 
 import com.resumeanalyzer.backend.enums.Role;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import java.time.LocalDateTime;
 
 @Data
@@ -33,9 +30,11 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
+    @Builder.Default
     @Column(name = "is_verified")
     private Boolean isVerified = false;
 
+    @Builder.Default
     @Column(name = "is_active")
     private Boolean isActive = true;
 
