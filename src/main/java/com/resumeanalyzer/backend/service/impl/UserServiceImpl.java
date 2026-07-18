@@ -6,6 +6,9 @@ import com.resumeanalyzer.backend.dto.response.AuthResponse;
 import com.resumeanalyzer.backend.dto.response.UserResponse;
 import com.resumeanalyzer.backend.entity.User;
 import com.resumeanalyzer.backend.enums.Role;
+import com.resumeanalyzer.backend.exception.BadRequestException;
+import com.resumeanalyzer.backend.exception.EmailAlreadyExistsException;
+import com.resumeanalyzer.backend.exception.ResourceNotFoundException;
 import com.resumeanalyzer.backend.repository.UserRepository;
 import com.resumeanalyzer.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -20,47 +23,64 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserResponse register(RegisterRequest request) {
 
-        // Step 1: Email already exist karta hai?
+        // Step 1: Duplicate email check
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already registered");
+            throw new EmailAlreadyExistsException(request.getEmail());
         }
 
-        // Step 2: User entity banao
+        // Step 2: Role validate karo
+        Role role;
+        try {
+            role = Role.valueOf(request.getRole().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException(
+                    "Invalid role. Allowed: STUDENT, RECRUITER, ADMIN"
+            );
+        }
+
+        // Step 3: User banao
         User user = User.builder()
                 .name(request.getName())
                 .email(request.getEmail())
-                .password(request.getPassword()) // Plain text abhi — Day 8 mein encrypt karenge
-                .role(Role.valueOf(request.getRole().toUpperCase()))
+                .password(request.getPassword())
+                .role(role)
+                .isVerified(false)
+                .isActive(true)
                 .build();
 
-        // Step 3: Database mein save karo
+        // Step 4: Save karo
         User savedUser = userRepository.save(user);
 
-        // Step 4: Response DTO banao aur return karo
+        // Step 5: Response return karo
         return mapToUserResponse(savedUser);
     }
 
     @Override
     public AuthResponse login(LoginRequest request) {
-        // Day 8 mein implement karenge — JWT ke saath
-        throw new RuntimeException("Login — JWT Day pe implement hoga");
+        throw new BadRequestException(
+                "Login — JWT Day pe implement hoga"
+        );
     }
 
     @Override
     public UserResponse getUserById(Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User", id));
         return mapToUserResponse(user);
     }
 
     @Override
     public UserResponse getUserByEmail(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "User not found with email: " + email
+                        ));
         return mapToUserResponse(user);
     }
 
-    // Entity → DTO conversion
+    // Entity → DTO
     private UserResponse mapToUserResponse(User user) {
         return UserResponse.builder()
                 .id(user.getId())
